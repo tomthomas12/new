@@ -1,0 +1,9 @@
+mysql -u ctf_user -pctf_password wolfcore_bank << 'EOF'
+UPDATE users SET balance = 500.00, is_vip = FALSE WHERE username = 'bob_joseph';
+UPDATE users SET balance = 250.00, is_vip = FALSE WHERE username = 'john_doe';
+UPDATE users SET balance = 850.00, is_vip = FALSE WHERE username = 'sarah_smith';
+UPDATE users SET balance = 750.00, is_vip = FALSE WHERE username = 'mary_doe';
+
+-- Verify
+SELECT username, balance, is_vip FROM users;
+EOF
